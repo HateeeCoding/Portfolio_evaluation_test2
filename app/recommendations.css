@@ -1,0 +1,25 @@
+.recommendation-carousel { padding-bottom: 0; }
+.rec-top { display: flex; justify-content: space-between; align-items: center; }
+.rec-label .medium { color: #d7c28d; }
+.rec-label .low { color: #b7c9bf; }
+.rec-controls { display: flex; align-items: center; gap: 8px; color: #afc1b5; font-size: 11px; letter-spacing: .7px; }
+.rec-controls button { width: 28px; height: 28px; border: 1px solid #52685d; border-radius: 50%; background: transparent; color: #edf3ef; font-size: 15px; cursor: pointer; }
+.rec-grid { animation: rec-in .35s ease; }
+.allocation-bars i { transition: width .35s ease; }
+.rec-dots { display: flex; gap: 7px; margin: 25px 0 18px; }
+.rec-dots button { width: 22px; height: 3px; border: 0; border-radius: 3px; background: #5c7166; padding: 0; cursor: pointer; transition: all .25s; }
+.rec-dots .selected { background: #d8e9de; width: 39px; }
+.impact-strip { border-top: 1px solid #40584c; background: #21352c; margin: 0 -40px; padding: 23px 40px; display: flex; align-items: center; justify-content: space-between; gap: 30px; }
+.impact-strip p { font-size: 10px; letter-spacing: 1px; color: #a4bbad; font-weight: bold; margin-bottom: 4px; }
+.impact-strip h3 { font-family: Fraunces, serif; font-size: 18px; }
+.impact-graphic { display: flex; align-items: end; gap: 14px; min-width: 375px; }
+.impact-column { display: grid; grid-template-columns: auto auto; grid-template-rows: auto 60px; column-gap: 7px; align-items: end; }
+.impact-column span { grid-column: 1 / -1; font-size: 10px; color: #a8bcaf; margin-bottom: 5px; }
+.impact-column i { width: 14px; background: #7f978a; border-radius: 3px 3px 0 0; transition: height .35s ease; }
+.impact-column.potential i { background: #b5dfc4; }
+.impact-column b { font-size: 14px; }
+.impact-result { border-left: 1px solid #52695d; padding-left: 17px; display: grid; gap: 1px; margin-left: 6px; }
+.impact-result strong { font-family: Fraunces, serif; font-size: 24px; color: #c5e8d0; }
+.impact-result span { font-size: 10px; color: #b4c8bb; max-width: 95px; line-height: 1.25; }
+@keyframes rec-in { from { opacity: .25; transform: translateX(8px); } to { opacity: 1; transform: none; } }
+@media (max-width: 800px) { .recommendation-carousel { padding-bottom: 0; } .rec-top { gap: 10px; } .impact-strip { margin: 0 -22px; padding: 22px; align-items: start; flex-direction: column; } .impact-graphic { min-width: 0; width: 100%; justify-content: space-between; } }

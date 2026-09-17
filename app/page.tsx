@@ -1,135 +1,62 @@
-'use client';
+"use client";
 
-import React, { useState, useMemo } from 'react';
-import { MOCK_HOLDINGS, MOCK_PILLARS, MOCK_RECOMMENDATIONS, MOCK_SCENARIO } from '@/lib/portfolioData';
-import { calculatePortfolioSummary, calculatePortfolioHealth } from '@/lib/scoringEngine';
-import { Holding } from '@/lib/types';
-import { TopHeader } from '@/components/dashboard/TopHeader';
-import { PortfolioSummary } from '@/components/dashboard/PortfolioSummary';
-import { PortfolioHealth } from '@/components/dashboard/PortfolioHealth';
-import { SixPillarsGrid } from '@/components/dashboard/SixPillarsGrid';
-import { Recommendations } from '@/components/dashboard/Recommendations';
-import { HoldingsSidebar } from '@/components/holdings/HoldingsSidebar';
-import { HoldingDetailSheet } from '@/components/holdings/HoldingDetailSheet';
-import { ScenarioImpactModal } from '@/components/dashboard/ScenarioImpactModal';
-import { InvestorFitModal } from '@/components/questionnaire/InvestorFitModal';
+import { useEffect, useState } from "react";
 
-export default function PortfolioDashboardPage() {
-  const [holdings, setHoldings] = useState<Holding[]>(MOCK_HOLDINGS);
-  const [lastSynced, setLastSynced] = useState<string>('Today, 10:42 AM');
-  const [selectedHolding, setSelectedHolding] = useState<Holding | null>(null);
-  const [filterMode, setFilterMode] = useState<'all' | 'draggers'>('all');
-  const [isSimulatorOpen, setIsSimulatorOpen] = useState<boolean>(false);
-  const [isQuestionnaireOpen, setIsQuestionnaireOpen] = useState<boolean>(false);
+type Holding = { name: string; symbol: string; allocation: number; value: string; return: string; quality: string; valuation: string; fit: string; status: string; tone: string };
 
-  // Compute live portfolio metrics
-  const summary = useMemo(() => {
-    return calculatePortfolioSummary(holdings, lastSynced);
-  }, [holdings, lastSynced]);
+const holdings: Holding[] = [
+  { name: "HDFC Bank", symbol: "HDFCBANK", allocation: 31, value: "₹5.5L", return: "+28%", quality: "Strong", valuation: "Fair", fit: "Good", status: "WATCH", tone: "amber" },
+  { name: "Reliance Industries", symbol: "RELIANCE", allocation: 16, value: "₹2.8L", return: "+18%", quality: "Strong", valuation: "Fair", fit: "Strong", status: "HOLD", tone: "green" },
+  { name: "Tata Consultancy Services", symbol: "TCS", allocation: 12, value: "₹2.1L", return: "+11%", quality: "Strong", valuation: "Expensive", fit: "Good", status: "WATCH", tone: "amber" },
+  { name: "ICICI Bank", symbol: "ICICIBANK", allocation: 10, value: "₹1.8L", return: "+16%", quality: "Strong", valuation: "Fair", fit: "Strong", status: "HOLD", tone: "green" },
+  { name: "Infosys", symbol: "INFY", allocation: 7, value: "₹1.2L", return: "−8%", quality: "Weakening", valuation: "Fair", fit: "Poor", status: "RECONSIDER", tone: "red" },
+];
 
-  const health = useMemo(() => {
-    return calculatePortfolioHealth(MOCK_PILLARS);
+const health = [
+  ["Portfolio spread", "GOOD", "Your investments are reasonably spread out.", "Top 3 holdings: 59%", 76, "green"],
+  ["Investment quality", "STRONG", "Most of your money is in financially healthy companies.", "72% meeting quality criteria", 82, "green"],
+  ["Downside protection", "MODERATE", "Your portfolio can still experience meaningful swings.", "Historical max drawdown: −23%", 55, "amber"],
+  ["Valuation safety", "WATCH", "A few holdings are priced above our comfort range.", "28% in expensive holdings", 46, "amber"],
+];
+
+const recommendations = [
+  { priority: "HIGH PRIORITY", tone: "high", title: "Consider reducing HDFC Bank", text: "It’s become a large part of your portfolio. Reducing it gradually could lower your dependence on a single company—without changing the kind of companies you own.", current: 31, suggested: 20, currentValue: "₹5.5L", suggestedValue: "₹3.6L", impact: "₹60K", metric: "historical downside reduction", detail: "HDFC Bank is a high-quality business, but at 31% of your portfolio its performance has an outsized effect on your results. A ~20% allocation leaves it important, while making room for more balance." },
+  { priority: "MEDIUM PRIORITY", tone: "medium", title: "Add balance outside financials", text: "Financial companies make up 41% of your portfolio. Your long-term plan could benefit from one or two quality holdings in other industries.", current: 41, suggested: 32, currentValue: "Financial exposure", suggestedValue: "More balanced", impact: "9 pts", metric: "less sector dependence", detail: "HDFC Bank and ICICI Bank are both strong businesses. The recommendation is about balance, not a negative view on either company." },
+  { priority: "LOW PRIORITY", tone: "low", title: "Review your Infosys position", text: "The position is small, but its quality signals have softened. There’s no urgency—this is one to revisit at your next review.", current: 7, suggested: 5, currentValue: "₹1.2L", suggestedValue: "~₹90K", impact: "2 pts", metric: "lower weaker-quality exposure", detail: "We’d reconsider the holding if earnings momentum weakens further or the investment thesis changes. For now, keep it on your watch list." },
+] as const;
+
+export default function Home() {
+  const [range, setRange] = useState("1Y");
+  const [allocation, setAllocation] = useState(20);
+  const [expanded, setExpanded] = useState(false);
+  const [recommendationIndex, setRecommendationIndex] = useState(0);
+  const [selected, setSelected] = useState<Holding | null>(null);
+  const downside = Math.round(240000 - (31 - allocation) * 5455);
+  const recommendation = recommendations[recommendationIndex];
+
+  useEffect(() => {
+    const rotation = window.setInterval(() => { setRecommendationIndex(current => (current + 1) % recommendations.length); setExpanded(false); }, 6500);
+    return () => window.clearInterval(rotation);
   }, []);
 
-  const handleSyncComplete = (newTimestamp: string) => {
-    setLastSynced(newTimestamp);
-  };
-
-  const handleSelectHoldingBySymbol = (symbol: string) => {
-    const target = holdings.find((h) => h.symbol.toLowerCase() === symbol.toLowerCase());
-    if (target) {
-      setSelectedHolding(target);
-    }
-  };
-
-  const handleFilterDraggers = () => {
-    setFilterMode('draggers');
-    // Scroll smoothly to sidebar if on mobile
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  return (
-    <div className="min-h-screen flex flex-col bg-[#F8F9FA] text-slate-900">
-      {/* Top Header */}
-      <TopHeader
-        lastSynced={lastSynced}
-        onSyncComplete={handleSyncComplete}
-        onOpenQuestionnaire={() => setIsQuestionnaireOpen(true)}
-        onOpenSimulator={() => setIsSimulatorOpen(true)}
-      />
-
-      {/* Main Container: Left Holdings Sidebar + Right Dashboard */}
-      <div className="flex-1 flex flex-col lg:flex-row max-w-[1600px] w-full mx-auto">
-        {/* Left Holdings Sidebar (Persistent and independently scrollable) */}
-        <HoldingsSidebar
-          holdings={holdings}
-          selectedHoldingId={selectedHolding?.id || null}
-          onSelectHolding={(h) => setSelectedHolding(h)}
-          filterMode={filterMode}
-          onClearFilter={() => setFilterMode('all')}
-        />
-
-        {/* Main Dashboard Content Area */}
-        <main className="flex-1 p-4 sm:p-6 lg:p-8 space-y-7 min-w-0 overflow-x-hidden">
-          {/* 1. Portfolio Summary (Primary Value, Invested, Return metrics + Trendline) */}
-          <PortfolioSummary summary={summary} />
-
-          {/* 2. Central Portfolio Health Section */}
-          <PortfolioHealth
-            health={health}
-            onExploreRecommendations={() => {
-              const recSection = document.getElementById('recommendations-section');
-              if (recSection) {
-                recSection.scrollIntoView({ behavior: 'smooth' });
-              }
-            }}
-          />
-
-          {/* 3. Six Portfolio Pillars */}
-          <SixPillarsGrid pillars={MOCK_PILLARS} />
-
-          {/* 4. Recommendations / Improve Your Portfolio */}
-          <div id="recommendations-section">
-            <Recommendations
-              recommendations={MOCK_RECOMMENDATIONS}
-              onSelectHolding={handleSelectHoldingBySymbol}
-              onFilterDraggers={handleFilterDraggers}
-              onOpenSimulator={() => setIsSimulatorOpen(true)}
-            />
-          </div>
-
-          {/* Footer note adhering to Impeccable standards */}
-          <footer className="pt-6 pb-4 border-t border-slate-200/80 text-center sm:text-left flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400 font-medium">
-            <span>
-              Designed for retail clarity. All metrics computed on consolidated trade book data.
-            </span>
-            <span>
-              Mock Data Mode • Ready for Production API Hookup
-            </span>
-          </footer>
-        </main>
-      </div>
-
-      {/* Holding Detail Sheet (Opens when holding clicked in sidebar or recommendation) */}
-      <HoldingDetailSheet
-        holding={selectedHolding}
-        onClose={() => setSelectedHolding(null)}
-      />
-
-      {/* Before vs After Rebalancing Scenario Impact Modal */}
-      <ScenarioImpactModal
-        scenario={MOCK_SCENARIO}
-        isOpen={isSimulatorOpen}
-        onClose={() => setIsSimulatorOpen(false)}
-      />
-
-      {/* Separate Investor Profile & Portfolio Fit Questionnaire */}
-      <InvestorFitModal
-        isOpen={isQuestionnaireOpen}
-        onClose={() => setIsQuestionnaireOpen(false)}
-        summary={summary}
-        holdings={holdings}
-      />
+  return <main>
+    <nav><div className="brand"><span className="brand-mark">n</span> nest</div><div className="nav-links"><span>Overview</span><span>Portfolio</span><span>Insights</span></div><div className="avatar">AS</div></nav>
+    <div className="shell">
+      <div className="eyebrow">SAMPLE PORTFOLIO · UPDATED TODAY</div>
+      <section className="hero">
+        <div><p className="kicker">Your portfolio</p><h1>₹17.8L</h1><p className="subtle">Current portfolio value</p></div>
+        <div className="returns"><div><p className="kicker">Total return</p><strong className="positive">+₹2.6L <small>+17.1%</small></strong><p className="subtle">Since you started investing</p></div><div className="benchmark"><span>Benchmark</span><b>+14.8%</b><i>▲ 2.3% ahead</i></div></div>
+      </section>
+      <section className="card chart-card"><div className="section-top"><div><h2>A strong year, with one thing to watch</h2><p>You&apos;re up 17.1%, slightly ahead of the benchmark. HDFC Bank drove much of that growth.</p></div><div className="tabs">{["1M","3M","6M","1Y","3Y","All"].map(x => <button key={x} className={range === x ? "active" : ""} onClick={() => setRange(x)}>{x}</button>)}</div></div><div className="chart"><svg viewBox="0 0 920 210" preserveAspectRatio="none"><defs><linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#38755f" stopOpacity=".17"/><stop offset="1" stopColor="#38755f" stopOpacity="0"/></linearGradient></defs><path className="grid" d="M0 40H920M0 105H920M0 170H920"/><path className="benchmark-line" d="M0 162 C90 155 120 178 190 142 S290 159 360 125 S450 138 520 108 S620 128 690 84 S800 103 920 47"/><path className="area" d="M0 174 C70 164 110 181 175 146 S270 166 345 118 S430 138 510 94 S590 112 660 72 S760 100 840 36 S890 45 920 20 V210 H0Z"/><path className="portfolio-line" d="M0 174 C70 164 110 181 175 146 S270 166 345 118 S430 138 510 94 S590 112 660 72 S760 100 840 36 S890 45 920 20"/></svg><div className="chart-labels"><span>Sep ’24</span><span>Dec</span><span>Mar ’25</span><span>Jun</span><span>Sep</span></div></div><div className="legend"><span><i className="line portfolio"/> Your portfolio</span><span><i className="line"/> NIFTY 50</span></div></section>
+      <section className="section"><div className="section-heading"><div><p className="kicker">PORTFOLIO HEALTH</p><h2>A calm view of what&apos;s underneath</h2></div><a>See the full health report →</a></div><div className="health-grid">{health.map(([title,status,body,stat,score,tone]) => <article className="health-card" key={title as string}><div className="health-title"><h3>{title}</h3><span className={`pill ${tone}`}>{status}</span></div><p>{body}</p><div className="measure"><div className="measure-track"><div className={`measure-fill ${tone}`} style={{width: `${score}%`}}/></div><b>{stat}</b></div></article>)}</div></section>
+      <section className="standout"><div className="standout-copy"><p className="kicker">WHAT STANDS OUT</p><h2>One stock did a lot of the heavy lifting.</h2><p>HDFC Bank contributed <b>43% of your total gains</b>. That&apos;s helped your returns, but it also means your portfolio leans heavily on one company.</p><button>Understand your concentration <span>→</span></button></div><div className="contribution"><p>CONTRIBUTION TO GAINS</p>{[["HDFC Bank",43],["Reliance",20],["ICICI Bank",16],["Other holdings",21]].map(([label,val]) => <div className="bar-row" key={label as string}><span>{label}</span><div><i style={{width:`${val}%`}}/></div><b>{val}%</b></div>)}</div></section>
+      <section className="fit section"><div className="fit-intro"><p className="kicker">PORTFOLIO FIT</p><h2>Does this portfolio match what you want?</h2><p>We compare your investments with the preferences you shared—not a personality score.</p><div className="preferences"><span><b>Goal</b>Long-term wealth growth</span><span><b>Risk preference</b>Moderately high</span><span><b>Time horizon</b>7+ years</span></div></div><div className="fit-score"><div className="score">82<small>/100</small></div><span className="pill green">GOOD FIT</span><h3>Your portfolio broadly matches your preferences.</h3><p>Its concentration is the main area worth improving.</p></div></section>
+      <section className="recommendation recommendation-carousel"><div className="rec-top"><div className="rec-label">RECOMMENDATION <span className={recommendation.tone}>{recommendation.priority}</span></div><div className="rec-controls"><span>{String(recommendationIndex + 1).padStart(2, "0")} / 03</span><button aria-label="Previous recommendation" onClick={() => { setRecommendationIndex((recommendationIndex + 2) % 3); setExpanded(false); }}>←</button><button aria-label="Next recommendation" onClick={() => { setRecommendationIndex((recommendationIndex + 1) % 3); setExpanded(false); }}>→</button></div></div><div className="rec-grid" key={recommendation.title}><div><h2>{recommendation.title}</h2><p>{recommendation.text}</p><button className="link-button" onClick={() => setExpanded(!expanded)}>Why are we suggesting this? <span>{expanded ? "−" : "+"}</span></button>{expanded && <p className="expanded">{recommendation.detail}</p>}</div><div className="allocation"><div><span>Today</span><b>{recommendation.current}%</b><i>{recommendation.currentValue}</i></div><div className="arrow">→</div><div className="suggested"><span>Potential position</span><b>~{recommendation.suggested}%</b><i>{recommendation.suggestedValue}</i></div><div className="allocation-bars"><i style={{width:`${Math.min(recommendation.current * 2.25, 92)}%`}}/><i style={{width:`${Math.min(recommendation.suggested * 2.25, 92)}%`}}/></div></div></div><div className="rec-dots">{recommendations.map((item, index) => <button aria-label={`View ${item.priority.toLowerCase()} recommendation`} className={index === recommendationIndex ? "selected" : ""} key={item.title} onClick={() => { setRecommendationIndex(index); setExpanded(false); }} />)}</div><div className="impact-strip"><div><p>THE POTENTIAL IMPACT</p><h3>See the trade-off, in one view.</h3></div><div className="impact-graphic"><div className="impact-column"><span>Today</span><i style={{height:`${Math.min(recommendation.current * 1.4, 58)}px`}} /><b>{recommendation.current}%</b></div><div className="impact-column potential"><span>Potential</span><i style={{height:`${Math.min(recommendation.suggested * 1.4, 58)}px`}} /><b>{recommendation.suggested}%</b></div><div className="impact-result"><strong>{recommendation.impact}</strong><span>{recommendation.metric}</span></div></div></div></section>
+      <section className="simulation card"><div><p className="kicker">SEE WHAT THIS CHANGE COULD MEAN</p><h2>A little less concentration, a little more room to breathe.</h2><p>Move the allocation to see an illustrative historical scenario.</p><label>HDFC Bank allocation <b>{allocation}%</b><input type="range" min="15" max="31" value={allocation} onChange={e => setAllocation(+e.target.value)} /></label></div><div className="sim-result"><div><span>Current historical downside</span><strong>−₹2.4L</strong></div><div><span>With {allocation}% allocation</span><strong>−₹{(downside/100000).toFixed(1)}L</strong></div><div className="saved"><span>Potential downside reduction</span><strong>₹{((240000-downside)/1000).toFixed(0)}K</strong></div><p>Illustrative historical simulation. Not a prediction or guarantee.</p></div><div className="risk-landscape"><div className="landscape-heading"><span>CONCENTRATION VIEW</span><b>Live as you adjust</b></div><div className="landscape-bars"><div><span>Today</span><i className="risk-block" style={{width:"78%"}}><em>HDFC Bank 31%</em></i><small>One holding carries a large share</small></div><div><span>Potential</span><i className="risk-block potential" style={{width:`${Math.max(38, allocation * 2.45)}%`}}><em>HDFC Bank {allocation}%</em></i><small>{31 - allocation}% freed for other holdings</small></div></div></div></section>
+      <section className="progress section"><div className="section-heading"><div><p className="kicker">PORTFOLIO PROGRESS</p><h2>Your portfolio is getting healthier.</h2></div><p className="sample-note">Based on three portfolio syncs</p></div><div className="progress-grid"><article className="progress-summary"><p>Since your first review</p><h3>You acted on 3 thoughtful changes.</h3><span>Each one made the portfolio a little less dependent on a small number of holdings.</span><div className="sync-path"><div className="sync active"><i/>First sync<small>Jun 2025</small></div><div className="sync active"><i/>Rebalanced<small>Jul 2025</small></div><div className="sync active"><i/>Today<small>Sep 2025</small></div></div></article><article className="progress-metrics"><div><span>Portfolio fit</span><b>68 <i>→</i> <strong>82</strong></b><small>Better aligned with your goal and risk preference</small></div><div><span>Top 3 concentration</span><b>64% <i>→</i> <strong>59%</strong></b><small>Less reliance on a few favourites</small></div><div><span>Investment quality</span><b>72 <i>→</i> <strong>81</strong></b><small>More money in financially healthy businesses</small></div></article></div></section>
+      <section className="pulse section"><div className="section-heading"><div><p className="kicker">PORTFOLIO PULSE</p><h2>What changed</h2></div><a>View all activity →</a></div><div className="pulse-item"><div className="pulse-dot"/><div><b>Something changed, but you don&apos;t need to act.</b><p>Infosys reported softer quarterly earnings. Our view remains <strong>HOLD</strong> because the long-term thesis has not changed.</p></div><time>Today</time></div><div className="pulse-item"><div className="pulse-dot muted"/><div><b>Your technology exposure is now 19%</b><p>It rose slightly after TCS outperformed the rest of your portfolio this month.</p></div><time>3 days ago</time></div></section>
+      <section className="section"><div className="section-heading"><div><p className="kicker">YOUR HOLDINGS</p><h2>Where your money is</h2></div><p className="sample-note">Sample data for demonstration</p></div><div className="table-wrap"><table><thead><tr><th>Company</th><th>Allocation</th><th>Value</th><th>Return</th><th>Quality</th><th>Valuation</th><th>Portfolio fit</th><th>Status</th></tr></thead><tbody>{holdings.map(h => <tr key={h.symbol} onClick={() => setSelected(h)}><td><b>{h.name}</b><small>{h.symbol}</small></td><td>{h.allocation}%</td><td>{h.value}</td><td className={h.return.includes("+") ? "positive" : "negative"}>{h.return}</td><td>{h.quality}</td><td>{h.valuation}</td><td>{h.fit}</td><td><span className={`pill ${h.tone}`}>{h.status}</span></td></tr>)}</tbody></table></div></section>
     </div>
-  );
+    {selected && <div className="modal-backdrop" onClick={() => setSelected(null)}><aside className="detail" onClick={e => e.stopPropagation()}><button className="close" onClick={() => setSelected(null)}>×</button><p className="kicker">{selected.symbol}</p><h2>{selected.name}</h2><strong className="price">₹1,580 <em>+2.4%</em></strong><span className={`pill ${selected.tone}`}>{selected.status}</span><hr/><h3>What&apos;s our view?</h3><p>{selected.name} remains a strong business, but its current valuation is above our preferred range. It has a useful role in your long-term portfolio; we&apos;d avoid adding aggressively at this level.</p><div className="detail-list"><span><b>Business quality</b>Strong</span><span><b>Valuation</b>Fair</span><span><b>Portfolio role</b>Core holding</span></div><button>See the full stock view →</button></aside></div>}
+  </main>;
 }
